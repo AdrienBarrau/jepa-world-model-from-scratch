@@ -57,8 +57,35 @@ def env_step(state: torch.Tensor, action: int, room_size: int = 8) -> tuple[torc
     next_observation=render_observation(state, room_size)
     return (next_state, next_observation)
 
-# Step 6 - collect_random_transitions (not yet solved)
-# TODO: implement
+# Step 6 - collect_random_transitions
+import random
+def collect_random_transitions(num_transitions, room_size=8, seed=0):
+    N = num_transitions
+    rng = random.Random(seed)
+
+    dico = {
+        'observations':       torch.zeros((N, 1, room_size, room_size)),
+        'actions':            torch.zeros((N,), dtype=torch.long),
+        'next_observations':  torch.zeros((N, 1, room_size, room_size)),
+        'states':             torch.zeros((N, 2)),
+        'next_states':        torch.zeros((N, 2)),
+    }
+
+    state, obs = env_reset(room_size, seed)
+    for i in range(N):
+        action = rng.randint(0, 3)
+        state_before = state.clone()
+        next_state, next_obs = env_step(state, action, room_size)
+
+        dico['observations'][i]        = obs
+        dico['actions'][i]             = action
+        dico['next_observations'][i]   = next_obs
+        dico['states'][i]              = state_before
+        dico['next_states'][i]         = next_state
+
+        state, obs = next_state, next_obs
+
+    return dico
 
 # Step 7 - build_transition_dataset (not yet solved)
 # TODO: implement
