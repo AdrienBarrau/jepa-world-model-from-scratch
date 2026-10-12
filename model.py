@@ -92,8 +92,25 @@ def build_transition_dataset(num_transitions: int = 512, room_size: int = 8, see
     # TODO: Build a JEPA training-ready transition dataset by collecting random transitions...
     return collect_random_transitions(num_transitions, room_size, seed)
 
-# Step 8 - init_encoder_params (not yet solved)
-# TODO: implement
+# Step 8 - init_encoder_params
+import torch
+def init_encoder_params(obs_channels: int = 1, room_size: int = 8, latent_dim: int = 32, seed: int = 0) -> dict:
+    # TODO: Initialize parameters of a small CNN encoder that maps pixel observations to latent embeddings.
+    #parameter initialization
+    torch.manual_seed(seed)
+    conv1_w=torch.randn((16,obs_channels,3,3)).requires_grad_(True)*0.1
+    conv2_w=torch.randn((32,16,3,3)).requires_grad_(True)*0.1
+    conv1_b=torch.zeros((16)).requires_grad_(True)
+    conv2_b=torch.zeros((32)).requires_grad_(True)
+    fc_w=torch.randn((latent_dim,32 * (room_size // 2) * (room_size // 2))).requires_grad_(True)*0.1
+    fc_b=torch.zeros((latent_dim)).requires_grad_(True)
+    dico={'conv1_w':conv1_w, 
+    'conv1_b':conv1_b, 
+    'conv2_w':conv2_w, 
+    'conv2_b':conv2_b, 
+    'fc_w':fc_w, 
+    'fc_b':fc_b}
+    return dico
 
 # Step 9 - encoder_forward (not yet solved)
 # TODO: implement
