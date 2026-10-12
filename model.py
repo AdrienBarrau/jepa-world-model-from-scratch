@@ -9,8 +9,10 @@ import numpy as np
 # Step 1 - init_env_state
 def init_env_state(room_size: int = 8, seed: int | None = None) -> torch.Tensor:
     # TODO: Initialize a random agent position state inside a square 2D room...
-    torch.manual_seed(seed)
-    return (torch.randint(low=0,high=room_size, size=(2,))).float()
+    gen = torch.Generator()
+    if seed is not None:
+        gen.manual_seed(seed)
+    return torch.randint(low=0, high=room_size, size=(2,), generator=gen).float()
 
 # Step 2 - apply_action
 def apply_action(state: torch.Tensor, action: int, room_size: int = 8) -> torch.Tensor:
@@ -39,8 +41,14 @@ def render_observation(state: torch.Tensor, room_size: int = 8) -> torch.Tensor:
     res[ind_i][ind_j]=1.0
     return res.unsqueeze(0)
 
-# Step 4 - env_reset (not yet solved)
-# TODO: implement
+# Step 4 - env_reset
+def env_reset(room_size: int = 8, seed: int | None = None) -> tuple[torch.Tensor, torch.Tensor]:
+    # TODO: Reset the environment by sampling a new state and its observation.
+    if seed is not None:
+        state=init_env_state(room_size, seed)
+    else:
+        state=state=init_env_state(room_size)
+    return state,render_observation(state, room_size)
 
 # Step 5 - env_step (not yet solved)
 # TODO: implement
