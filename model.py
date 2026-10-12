@@ -157,8 +157,22 @@ def init_predictor_params(latent_dim: int = 32, action_dim: int = 4, hidden_dim:
     dico['fc2_b']=0.02*torch.zeros((latent_dim)).requires_grad_(True)
     return dico
 
-# Step 14 - embed_action (not yet solved)
-# TODO: implement
+# Step 14 - embed_action
+def embed_action(actions: torch.Tensor, predictor_params: dict) -> torch.Tensor:
+    # TODO: Embed discrete actions into continuous vectors via a learned action embedding table.
+    #return torch.tensor([torch.matmul(act,predictor_params['action_embed_w']) for act in actions])
+    B=actions.shape[0]
+    emb_dim=predictor_params['action_embed_w'].shape[-1]
+    
+    res=torch.ones((B,emb_dim))
+    for i in range (B):
+        cur_action=actions[i]
+
+        for j in range (emb_dim):
+            res[i][j]=predictor_params['action_embed_w'][cur_action][j]
+
+
+    return res
 
 # Step 15 - predictor_forward (not yet solved)
 # TODO: implement
