@@ -212,8 +212,22 @@ def variance_loss(embeddings: torch.Tensor, gamma: float = 1.0, eps: float = 1e-
     vicreg_loss=torch.mean(torch.relu(gamma-torch.sqrt(vector_var+eps)))
     return vicreg_loss
 
-# Step 19 - covariance_loss (not yet solved)
-# TODO: implement
+# Step 19 - covariance_loss
+import torch
+
+def covariance_loss(embeddings: torch.Tensor) -> torch.Tensor:
+    B, D = embeddings.shape
+    if D <= 1:
+        return torch.tensor(0.0, dtype=embeddings.dtype, device=embeddings.device)
+
+    orig_dtype = embeddings.dtype 
+    embeddings_double = embeddings.double()
+    centered = embeddings_double - torch.mean(embeddings_double, dim=0)
+    cov_matrix = (1 / (B - 1)) * torch.matmul(centered.T, centered)
+    mask = ~torch.eye(D, dtype=torch.bool, device=embeddings.device)
+    off_diagonal_squares = cov_matrix[mask] ** 2
+    cov_loss = off_diagonal_squares.sum() / D
+    return cov_loss.to(orig_dtype)
 
 # Step 20 - vicreg_regularizer (not yet solved)
 # TODO: implement
