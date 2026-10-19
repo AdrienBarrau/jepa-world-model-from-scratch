@@ -204,8 +204,13 @@ def prediction_loss(predicted: torch.Tensor, target: torch.Tensor) -> torch.Tens
             loss+=(predicted[i][j]-target[i][j])**2
     return loss/(B*D)
 
-# Step 18 - variance_loss (not yet solved)
-# TODO: implement
+# Step 18 - variance_loss
+def variance_loss(embeddings: torch.Tensor, gamma: float = 1.0, eps: float = 1e-4) -> torch.Tensor:
+    # TODO: Compute VICReg variance hinge loss encouraging each dim std >= gamma.
+    vector_var=embeddings.var(dim=0)   #vector of size D vector[i] is the variance of the i th dimension
+    B,D=embeddings.shape
+    vicreg_loss=torch.mean(torch.relu(gamma-torch.sqrt(vector_var+eps)))
+    return vicreg_loss
 
 # Step 19 - covariance_loss (not yet solved)
 # TODO: implement
