@@ -194,8 +194,15 @@ def predict_next_embedding(embeddings: torch.Tensor, actions: torch.Tensor, pred
     forward=predictor_forward(embeddings, actions, predictor_params)
     return forward
 
-# Step 17 - prediction_loss (not yet solved)
-# TODO: implement
+# Step 17 - prediction_loss
+def prediction_loss(predicted: torch.Tensor, target: torch.Tensor) -> torch.Tensor:
+    # TODO: Compute the JEPA prediction loss as mean squared error...
+    B,D=predicted.shape
+    loss=0
+    for i in range(B):
+        for j in range(D):
+            loss+=(predicted[i][j]-target[i][j])**2
+    return loss/(B*D)
 
 # Step 18 - variance_loss (not yet solved)
 # TODO: implement
