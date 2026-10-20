@@ -135,10 +135,11 @@ def init_target_encoder(encoder_params: dict) -> dict:
 # Step 11 - ema_update
 def ema_update(target_params: dict, encoder_params: dict, tau: float = 0.99) -> dict:
     # TODO: Refresh target encoder params via EMA of the online encoder.
-    target_encoder=init_target_encoder(encoder_params)
-    for key in target_encoder.keys():
-        target_encoder[key]=tau*target_params[key]+(1-tau)*target_encoder[key]
-    return target_encoder
+    with torch.no_grad():
+        target_encoder=init_target_encoder(encoder_params)
+        for key in target_encoder.keys():
+            target_encoder[key]=tau*target_params[key]+(1-tau)*target_encoder[key]
+        return target_encoder
 
 # Step 12 - encode_batch
 def encode_batch(obs: torch.Tensor, encoder_params: dict) -> torch.Tensor:
@@ -246,16 +247,22 @@ def jepa_training_step(batch: dict, encoder_params: dict, target_params: dict, p
         if p.grad is not None:
             p.grad.zero_()
     online=(encode_batch(batch['observations'], encoder_params)) 
-    target=encode_batch(batch['next_observations'],target_params).detach()
+    with torch.no_grad():  
+        target=encode_batch(batch['next_observations'],target_params)
     next_embed_pred=predict_next_embedding(online, batch['actions'], predictor_params)  
     loss=jepa_loss(next_embed_pred, target, online)    #we compute the MSE between next_embed_pred and target, online is just here to regularize.
     loss.backward()                    #update weight using gradient of the loss
     for p in encoder_params.keys():
+   
         p_t=encoder_params[p]
+        if p_t.grad is None:
+            continue
         encoder_params[p]=(p_t-lr*p_t.grad).detach().requires_grad_(True)
 
     for p in predictor_params.keys():
         p_p=predictor_params[p]
+        if p_p.grad is None:
+            continue
         predictor_params[p]=(p_p-lr*p_p.grad).detach().requires_grad_(True)
 
     updated_target_params=ema_update(target_params,encoder_params,tau) #update online weights with EMA
