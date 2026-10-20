@@ -135,11 +135,9 @@ def init_target_encoder(encoder_params: dict) -> dict:
 # Step 11 - ema_update
 def ema_update(target_params: dict, encoder_params: dict, tau: float = 0.99) -> dict:
     # TODO: Refresh target encoder params via EMA of the online encoder.
-    with torch.no_grad():
-        target_encoder=init_target_encoder(encoder_params)
-        for key in target_encoder.keys():
-            target_encoder[key]=tau*target_params[key]+(1-tau)*target_encoder[key]
-        return target_encoder
+    with torch.no_grad():   # EMA is a weight update — never build a graph here
+        return {k: tau * target_params[k] + (1 - tau) * encoder_params[k]
+                for k in encoder_params}
 
 # Step 12 - encode_batch
 def encode_batch(obs: torch.Tensor, encoder_params: dict) -> torch.Tensor:
