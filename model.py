@@ -395,31 +395,63 @@ def train_linear_probe(embeddings: torch.Tensor, states: torch.Tensor,
     return probe_params
 
 # Step 29 - probe_state_recovery
-import torch
-
-def probe_state_recovery(dataset, encoder_params, probe_params=None, num_probe_steps= 100):
+def probe_state_recovery(dataset, encoder_params, probe_params=None, num_probe_steps=100):
 
     with torch.no_grad():
-        embeddings = encode_batch(dataset['observations'], encoder_params)   
+        embeddings = encode_batch(dataset['observations'], encoder_params)
 
-    states = dataset['states'].detach()                                      
+    states = dataset['states'].detach()
+
     if probe_params is None:
         probe_params = init_linear_probe(
-            latent_dim=embeddings.shape[-1],
-            state_dim=states.shape[-1],
+            latent_dim=embeddings.shape[-1],   # 32
+            state_dim=states.shape[-1],        # 2
             seed=0,
         )
 
-    probe_params = train_linear_probe(embeddings, states, probe_params,
-                                      num_steps=num_probe_steps)
+    latent_dim = embeddings.shape[-1]
+    state_dim = states.shape[-1]
+
+    # Normalize to train_linear_probe's convention: w must be (latent_dim, state_dim)
+    # so that preds = emb @ w + b works.
+    # init_linear_probe returns w as (state_dim, latent_dim), so transpose it.
+    w_in = probe_params['w']
+    if w_in.shape[0] == state_dim and w_in.shape[1] == latent_dim:
+        # incoming (state_dim, latent_dim) -> transpose to (latent_dim, state_dim)
+        train_params = {
+            'w': w_in.T.detach().clone().requires_grad_(True),
+            'b': probe_params['b'].detach().clone().requires_grad_(True),
+        }
+    else:
+        # already (latent_dim, state_dim)
+        train_params = {
+            'w': w_in.detach().clone().requires_grad_(True),
+            'b': probe_params['b'].detach().clone().requires_grad_(True),
+        }
+
+    train_params = train_linear_probe(embeddings, states, train_params,
+                                      num_probe_steps)
 
     with torch.no_grad():
-        preds = embeddings @ probe_params['w'] + probe_params['b']         
+        preds = embeddings @ train_params['w'] + train_params['b']   # (N, state_dim)
         diff = preds - states
-        mse = float(((diff) ** 2).mean())
+        mse = float((diff ** 2).mean())
         mean_abs_error = float(diff.abs().mean())
 
-    return {'mse': mse, 'mean_abs_error': mean_abs_error, 'probe_params': probe_params}
+    # Return w in init_linear_probe's (state_dim, latent_dim) convention,
+    # so that pred = emb @ w.T + b reproduces our preds exactly.
+    returned_w = train_params['w']
+    if returned_w.shape[0] == latent_dim and returned_w.shape[1] == state_dim:
+        returned_w = returned_w.T                    # (latent_dim, state_dim) -> (state_dim, latent_dim)
+
+    return {
+        'mse': mse,
+        'mean_abs_error': mean_abs_error,
+        'probe_params': {
+            'w': returned_w.detach().clone(),
+            'b': train_params['b'].detach().clone(),
+        },
+    }
 
 # Step 30 - encode_goal (not yet solved)
 # TODO: implement
