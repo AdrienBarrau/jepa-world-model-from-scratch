@@ -234,39 +234,33 @@ def collapse_metric(embeddings: torch.Tensor) -> torch.Tensor:
     return torch.mean(torch.std(embeddings,dim=0))
 
 # Step 23 - jepa_training_step
-def jepa_training_step(batch: dict, encoder_params: dict, target_params: dict, predictor_params: dict, lr: float = 1e-3, tau: float = 0.99) -> tuple[dict, dict, dict, float, float]:
-    # TODO: Perform one full JEPA gradient update on a batch of transitions
-    #encode observations with online encoder, and next embeddings with target encoder
-    for p in encoder_params.values():
-        if p.grad is not None:
-            p.grad.zero_() # On réinitialise les gradients précédents
-            
-    for p in predictor_params.values():
-        if p.grad is not None:
-            p.grad.zero_()
-    online=(encode_batch(batch['observations'], encoder_params)) 
-    with torch.no_grad():  
-        target=encode_batch(batch['next_observations'],target_params)
-    next_embed_pred=predict_next_embedding(online, batch['actions'], predictor_params)  
-    loss=jepa_loss(next_embed_pred, target, online)    #we compute the MSE between next_embed_pred and target, online is just here to regularize.
-    loss.backward()                    #update weight using gradient of the loss
-    for p in encoder_params.keys():
-   
-        p_t=encoder_params[p]
-        if p_t.grad is None:
-            continue
-        encoder_params[p]=(p_t-lr*p_t.grad).detach().requires_grad_(True)
+def jepa_training_step(batch, encoder_params, target_params, predictor_params,
+                       lr: float = 1e-3, tau: float = 0.99):
+  
+    enc = {k: v.detach().requires_grad_(True) for k, v in encoder_params.items()}
+    pred = {k: v.detach().requires_grad_(True) for k, v in predictor_params.items()}
+    tgt = {k: v.detach() for k, v in target_params.items()}
 
-    for p in predictor_params.keys():
-        p_p=predictor_params[p]
-        if p_p.grad is None:
-            continue
-        predictor_params[p]=(p_p-lr*p_p.grad).detach().requires_grad_(True)
+    online = encode_batch(batch['observations'], enc)
+    with torch.no_grad():
+        target = encode_batch(batch['next_observations'], tgt)
 
-    updated_target_params=ema_update(target_params,encoder_params,tau) #update online weights with EMA
-    collapse_value=collapse_metric(online.detach())
-    loss_value=loss.item()
-    return (encoder_params, updated_target_params, predictor_params, loss_value, collapse_value)
+    next_embed_pred = predict_next_embedding(online, batch['actions'], pred)
+    loss = jepa_loss(next_embed_pred, target, online)
+    loss.backward()
+
+    with torch.no_grad():
+        new_enc = {k: (v - lr * v.grad).detach().requires_grad_(True)
+                   for k, v in enc.items()}
+        new_pred = {k: (v - lr * v.grad).detach().requires_grad_(True)
+                    for k, v in pred.items()}
+
+    new_tgt = ema_update(tgt, new_enc, tau)
+
+    loss_value = loss.item()                                  # Python float
+    collapse_value = collapse_metric(online.detach()).item()  # Python float, not tensor
+
+    return new_enc, new_tgt, new_pred, loss_value, collapse_value
 
 # Step 24 - train_jepa (not yet solved)
 # TODO: implement
