@@ -453,8 +453,21 @@ def probe_state_recovery(dataset, encoder_params, probe_params=None, num_probe_s
         },
     }
 
-# Step 30 - encode_goal (not yet solved)
-# TODO: implement
+# Step 30 - encode_goal
+def encode_goal(goal_state: torch.Tensor, encoder_params: dict, room_size: int = 8) -> torch.Tensor:
+    # TODO: Convert a desired agent position into a latent goal embedding.
+    # Render the goal state into an unbatched pixel observation: (1, room_size, room_size)
+    goal_obs = render_observation(goal_state.detach(), room_size)
+
+    # Add the batch dim -> (1, 1, room_size, room_size), the shape encoder_forward expects.
+    goal_obs = goal_obs.unsqueeze(0)
+
+    # Encode with the trained encoder; goal is a fixed target, so no gradients.
+    with torch.no_grad():
+        goal_embedding = encode_batch(goal_obs, encoder_params)   # (1, latent_dim)
+
+    # Return a 1D (latent_dim,) tensor for MPC cost evaluation.
+    return goal_embedding.squeeze(0)
 
 # Step 31 - latent_cost (not yet solved)
 # TODO: implement
