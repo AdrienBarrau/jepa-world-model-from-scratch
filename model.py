@@ -351,8 +351,13 @@ def multi_step_prediction_error(dataset: dict,
 
     return float(mse)
 
-# Step 27 - init_linear_probe (not yet solved)
-# TODO: implement
+# Step 27 - init_linear_probe
+def init_linear_probe(latent_dim: int = 32, state_dim: int = 2, seed: int = 0) -> dict:
+    # TODO: Initialize a linear probe that maps latent embeddings to state (x, y)
+    torch.manual_seed(seed)
+    w = (0.01 * torch.randn(state_dim, latent_dim)).requires_grad_(True)
+    b = torch.zeros(state_dim).requires_grad_(True)
+    return {'w': w, 'b': b}
 
 # Step 28 - train_linear_probe (not yet solved)
 # TODO: implement
