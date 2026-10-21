@@ -485,8 +485,25 @@ def sample_action_sequences(n_sequences: int, horizon: int, n_actions: int = 4,
         return torch.randint(low=0, high=n_actions, size=(n_sequences, horizon), generator=gen)
     return torch.randint(low=0, high=n_actions, size=(n_sequences, horizon))
 
-# Step 33 - score_action_sequences (not yet solved)
-# TODO: implement
+# Step 33 - score_action_sequences
+def score_action_sequences(start_embedding, action_sequences, goal_embedding, predictor_params):
+    # TODO: Score each action sequence by cumulative latent distance to the goal...
+    N = action_sequences.shape[0]
+
+ 
+    start = start_embedding.unsqueeze(0).expand(N, -1)          
+
+    traj = rollout_latent_dynamics(start, action_sequences, predictor_params)
+
+   
+    if traj.dim() == 2:
+        traj = traj.unsqueeze(1)                              
+
+    per_step_costs = latent_cost(traj, goal_embedding)
+
+    total_costs = per_step_costs[1:].sum(dim=0)               
+
+    return total_costs
 
 # Step 34 - select_best_plan (not yet solved)
 # TODO: implement
