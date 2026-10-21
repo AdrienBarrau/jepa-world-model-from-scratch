@@ -528,8 +528,53 @@ def mpc_step(start_embedding, goal_embedding, predictor_params,
 
     return int(best_plan[0].item())
 
-# Step 36 - run_mpc_episode (not yet solved)
-# TODO: implement
+# Step 36 - run_mpc_episode
+def run_mpc_episode(encoder_params, predictor_params, goal_pos, room_size,
+                    agent_size=None, max_steps=50, n_sequences=256, horizon=5,
+                    n_actions=4):
+    # TODO: Run a closed-loop random-shooting MPC episode toward a goal position.
+ 
+    if isinstance(goal_pos, torch.Tensor):
+        goal_state = goal_pos.detach().clone().float()
+    else:
+        goal_state = torch.tensor(list(goal_pos), dtype=torch.float32)
+
+    goal_embedding = encode_goal(goal_state, encoder_params, room_size)   
+
+    state, obs = env_reset(room_size)   
+
+    trajectory = [(float(state[0]), float(state[1]))]   
+    steps = 0
+
+    for _ in range(max_steps):
+    
+        with torch.no_grad():
+            start_embedding = encode_batch(obs.unsqueeze(0), encoder_params).squeeze(0)
+
+        action = mpc_step(start_embedding, goal_embedding, predictor_params,
+                          n_sequences=n_sequences, horizon=horizon,
+                          n_actions=n_actions)
+
+        state, obs = env_step(state, action, room_size)
+        steps += 1
+        trajectory.append((float(state[0]), float(state[1])))
+
+        if int(state[0]) == int(goal_state[0]) and int(state[1]) == int(goal_state[1]):
+            break
+
+    final_state = state
+    success = bool(int(final_state[0]) == int(goal_state[0]) and
+                   int(final_state[1]) == int(goal_state[1]))
+    final_distance = float(torch.sqrt(
+        (final_state[0] - goal_state[0]) ** 2 + (final_state[1] - goal_state[1]) ** 2
+    ))
+
+    return {
+        'success': success,
+        'steps': steps,
+        'trajectory': trajectory,
+        'final_distance': final_distance,
+    }
 
 # Step 37 - evaluate_planner (not yet solved)
 # TODO: implement
