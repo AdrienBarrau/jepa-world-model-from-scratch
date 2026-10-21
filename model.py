@@ -611,6 +611,64 @@ def evaluate_planner(encoder_params, predictor_params, room_size, agent_size,
         'mean_final_distance': total_distance / n_episodes,
     }
 
-# Step 38 - jepa_world_model_experiment (not yet solved)
-# TODO: implement
+# Step 38 - jepa_world_model_experiment
+def jepa_world_model_experiment(room_size, agent_size, embed_dim,
+                                n_train_transitions, n_epochs, batch_size,
+                                n_probe_samples, n_eval_episodes, max_steps,
+                                n_sequences, horizon):
+    # TODO: run the full end-to-end JEPA world-model experiment and return a results dict
+
+    # ollect transitions
+    dataset = build_transition_dataset(
+        num_transitions=n_train_transitions, room_size=room_size, seed=0
+    )
+
+    # Initialization of encoder,EMA target encoder and predictor 
+    encoder_params = init_encoder_params(
+        obs_channels=1, room_size=room_size, latent_dim=embed_dim, seed=0
+    )
+    target_params = init_target_encoder(encoder_params)
+    predictor_params = init_predictor_params(
+        latent_dim=embed_dim, action_dim=4, hidden_dim=64, seed=0
+    )
+    # Training of JEPA world model 
+    encoder_params, target_params, predictor_params, metrics = train_jepa(
+        dataset, encoder_params, target_params, predictor_params,
+        num_steps=n_epochs, batch_size=batch_size,
+        lr=1e-3, tau=0.99, seed=0,
+    )
+
+    train_losses = [m['loss'] for m in metrics]
+    collapse_metrics = [m['collapse'] for m in metrics]
+
+    # Linear probe on the first n_probe_samples transitions 
+    probe_dataset = {k: v[:n_probe_samples] for k, v in dataset.items()}
+    probe_result = probe_state_recovery(
+        probe_dataset, encoder_params, num_probe_steps=100
+    )
+
+    states = probe_dataset['states']
+    state_var = states.var(dim=0).mean()                     # mean squared deviation from per-dim means
+    probe_r2 = 1.0 - probe_result['mse'] / (state_var.item() + 1e-8)
+
+    # Evaluate the MPC planner over multiple start-goal episodes 
+    planner_results = evaluate_planner(
+        encoder_params=encoder_params,
+        predictor_params=predictor_params,
+        room_size=room_size,
+        agent_size=agent_size,
+        n_episodes=n_eval_episodes,
+        max_steps=max_steps,
+        n_sequences=n_sequences,
+        horizon=horizon,
+        n_actions=4,
+    )
+
+    return {
+        'train_losses': train_losses,
+        'collapse_metrics': collapse_metrics,
+        'probe_r2': probe_r2,
+        'success_rate': planner_results['success_rate'],
+        'mean_steps': planner_results['mean_steps'],
+    }
 
