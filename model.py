@@ -262,8 +262,27 @@ def jepa_training_step(batch, encoder_params, target_params, predictor_params,
 
     return new_enc, new_tgt, new_pred, loss_value, collapse_value
 
-# Step 24 - train_jepa (not yet solved)
-# TODO: implement
+# Step 24 - train_jepa
+def train_jepa(dataset, encoder_params, target_params, predictor_params,
+               num_steps: int = 50, batch_size: int = 32, lr: float = 1e-3,
+               tau: float = 0.99, seed: int = 0):
+    metrics = []
+    N = len(dataset['observations'])
+
+    gen = torch.Generator().manual_seed(seed) 
+
+    for j in range(num_steps):
+        #random shuffle
+        perm = torch.randperm(N, generator=gen)
+        for i in range(0, N, batch_size):
+            idx = perm[i:i + batch_size]
+            batch = {k: v[idx] for k, v in dataset.items()}
+            encoder_params, target_params, predictor_params, loss_value, collapse_value = \
+                jepa_training_step(batch, encoder_params, target_params, predictor_params, lr, tau)
+
+        metrics.append({'loss': loss_value, 'collapse': collapse_value})
+
+    return encoder_params, target_params, predictor_params, metrics
 
 # Step 25 - rollout_latent_dynamics (not yet solved)
 # TODO: implement
