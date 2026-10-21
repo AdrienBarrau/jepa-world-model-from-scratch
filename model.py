@@ -314,8 +314,42 @@ def rollout_latent_dynamics(initial_embedding: torch.Tensor,
 
     return trajectory[:, 0, :] if unbatched else trajectory
 
-# Step 26 - multi_step_prediction_error (not yet solved)
-# TODO: implement
+# Step 26 - multi_step_prediction_error
+import torch
+
+def multi_step_prediction_error(dataset: dict,
+                                encoder_params: dict,
+                                target_params: dict,
+                                predictor_params: dict,
+                                horizon: int = 5,
+                                num_samples: int = 32) -> float:
+    obs = dataset['observations']        # (N, 1, H, W)
+    actions = dataset['actions']         # (N,)
+
+    N = obs.shape[0]
+    n = min(num_samples, N - horizon)   
+    if n <= 0:
+        return 0.0                       
+
+    with torch.no_grad():              
+   
+        start_emb = encode_batch(obs[:n], encoder_params)
+
+        act_windows = actions[:n + horizon - 1].unfold(0, horizon, 1)[:n]
+
+        fut_emb = encode_batch(obs[1:n + horizon], target_params)      
+        targets = fut_emb.unfold(0, horizon, 1)[:n].permute(0, 2, 1)   
+
+        traj = rollout_latent_dynamics(start_emb, act_windows, predictor_params)
+        if traj.dim() == 2:              
+            traj = traj.unsqueeze(1)
+
+        preds = traj[1:]                 
+        preds = preds.permute(1, 0, 2)  
+
+        mse = ((preds - targets) ** 2).mean()
+
+    return float(mse)
 
 # Step 27 - init_linear_probe (not yet solved)
 # TODO: implement
