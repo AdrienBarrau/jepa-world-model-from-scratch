@@ -476,8 +476,14 @@ def latent_cost(latents, goal_embedding):
     costs = torch.sum(diff ** 2, dim=-1)     
     return costs
 
-# Step 32 - sample_action_sequences (not yet solved)
-# TODO: implement
+# Step 32 - sample_action_sequences
+def sample_action_sequences(n_sequences: int, horizon: int, n_actions: int = 4,
+                            seed: int | None = None) -> torch.Tensor:
+    # TODO: Draw random discrete action sequences for random-shooting MPC.
+    if seed is not None:
+        gen = torch.Generator().manual_seed(seed)
+        return torch.randint(low=0, high=n_actions, size=(n_sequences, horizon), generator=gen)
+    return torch.randint(low=0, high=n_actions, size=(n_sequences, horizon))
 
 # Step 33 - score_action_sequences (not yet solved)
 # TODO: implement
